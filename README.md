@@ -75,7 +75,7 @@ The pretrained model weights (about 30 MB) are downloaded automatically by `torc
 ### 1. Backend (Flask API)
 
 ```bash
-git clone https://github.com/<your-username>/xray-production.git
+git clone https://github.com/Gauravkrdas-spec/xray-production.git
 cd xray-production/backend
 
 python -m venv venv
