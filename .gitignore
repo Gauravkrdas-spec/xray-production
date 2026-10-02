@@ -1,0 +1,20 @@
+# Secrets: never commit your real environment file
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Runtime data
+backend/xray_database.db
+backend/logs/*.log
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Node
+frontend/node_modules/
+frontend/build/
