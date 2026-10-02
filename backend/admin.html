@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — RadVision AI</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --navy:   #0a1628;
+  --blue:   #1a3a5c;
+  --accent: #4A90D9;
+  --bg:     #0d0f14;
+  --panel:  #0f1117;
+  --border: #1e2130;
+  --text:   #e0e0e0;
+  --muted:  #556;
+  --green:  #63aa22;
+  --red:    #e24b4a;
+  --amber:  #ef9f27;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── SIDEBAR ── */
+.layout { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px;
+  background: #090c12;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+}
+
+.sidebar-logo {
+  padding: 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-mark {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 900; color: white;
+  margin-bottom: 8px;
+}
+
+.logo-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+}
+
+.logo-sub {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: .08em;
+}
+
+.sidebar-nav {
+  padding: 16px 0;
+  flex: 1;
+}
+
+.nav-section {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: var(--muted);
+  padding: 12px 16px 6px;
+  text-transform: uppercase;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: rgba(255,255,255,.5);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all .2s;
+  text-decoration: none;
+}
+
+.nav-item:hover {
+  background: rgba(74,144,217,.08);
+  color: white;
+}
+
+.nav-item.active {
+  background: rgba(74,144,217,.12);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.nav-icon { font-size: 16px; width: 20px; }
+
+.sidebar-bottom {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(74,144,217,.1);
+  border: 1px solid rgba(74,144,217,.2);
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.back-btn:hover { background: rgba(74,144,217,.2); }
+
+/* ── MAIN CONTENT ── */
+.main {
+  margin-left: 220px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 14px 28px;
+  background: #090c12;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+
+.topbar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+.topbar-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.refresh-btn {
+  padding: 6px 14px;
+  background: rgba(74,144,217,.1);
+  border: 1px solid rgba(74,144,217,.2);
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.refresh-btn:hover { background: rgba(74,144,217,.2); }
+
+.live-dot {
+  width: 8px; height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: blink 2s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+.content { padding: 24px 28px; }
+
+/* ── METRIC CARDS ── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.metric-blue::before   { background: var(--accent); }
+.metric-green::before  { background: var(--green);  }
+.metric-amber::before  { background: var(--amber);  }
+.metric-red::before    { background: var(--red);    }
+
+.metric-icon {
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.metric-num {
+  font-size: 32px;
+  font-weight: 800;
+  color: white;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.metric-change {
+  position: absolute;
+  top: 16px; right: 16px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.change-up   { background: rgba(99,170,34,.15); color: var(--green); }
+.change-down { background: rgba(226,75,74,.15); color: var(--red);   }
+
+/* ── GRID LAYOUT ── */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.full-width { grid-column: 1 / -1; }
+
+/* ── PANELS ── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+
+.panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+}
+
+.panel-badge {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(74,144,217,.15);
+  color: var(--accent);
+}
+
+.panel-body { padding: 18px; }
+
+/* ── VALIDATION PROGRESS ── */
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.progress-circle {
+  width: 100px; height: 100px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) 47%, #1e2130 0%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.progress-circle::after {
+  content: '';
+  position: absolute;
+  width: 72px; height: 72px;
+  background: var(--panel);
+  border-radius: 50%;
+}
+
+.progress-num {
+  position: relative;
+  z-index: 1;
+  font-size: 20px;
+  font-weight: 800;
+  color: white;
+}
+
+.progress-info h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.progress-info p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.progress-bar-wrap {
+  margin-top: 16px;
+}
+
+.progress-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #1e2130;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+
+.fill-blue  { background: var(--accent); }
+.fill-green { background: var(--green);  }
+.fill-amber { background: var(--amber);  }
+.fill-red   { background: var(--red);    }
+
+/* ── DEPLOYMENT STATUS ── */
+.deploy-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+.status-not-ready {
+  background: rgba(239,159,39,.08);
+  border: 1px solid rgba(239,159,39,.3);
+}
+
+.status-ready {
+  background: rgba(99,170,34,.08);
+  border: 1px solid rgba(99,170,34,.3);
+}
+
+.deploy-icon { font-size: 24px; }
+
+.deploy-text strong {
+  display: block;
+  font-size: 13px;
+  color: white;
+  margin-bottom: 2px;
+}
+
+.deploy-text span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ── ACCURACY CHART ── */
+.accuracy-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.acc-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.acc-label {
+  font-size: 12px;
+  color: var(--muted);
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.acc-bar {
+  flex: 1;
+  height: 8px;
+  background: #1e2130;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.acc-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.acc-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  width: 36px;
+  text-align: right;
+}
+
+/* ── RECENT TABLE ── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.data-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(30,33,48,.5);
+  color: rgba(255,255,255,.7);
+}
+
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(74,144,217,.04); }
+
+.urgency-pill {
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.pill-emergency { background: rgba(226,75,74,.15);  color: var(--red);   }
+.pill-urgent    { background: rgba(239,159,39,.15); color: var(--amber); }
+.pill-routine   { background: rgba(99,170,34,.15);  color: var(--green); }
+
+.rating-pill {
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.rating-correct { background: rgba(99,170,34,.15);  color: var(--green); }
+.rating-partial { background: rgba(239,159,39,.15); color: var(--amber); }
+.rating-wrong   { background: rgba(226,75,74,.15);  color: var(--red);   }
+
+/* ── DISEASE BREAKDOWN ── */
+.disease-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.disease-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.disease-name {
+  font-size: 12px;
+  color: var(--muted);
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.disease-bar {
+  flex: 1;
+  height: 6px;
+  background: #1e2130;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.disease-fill { height: 100%; border-radius: 3px; }
+
+.disease-count {
+  font-size: 11px;
+  color: white;
+  font-weight: 600;
+  width: 28px;
+  text-align: right;
+}
+
+/* ── FEEDBACK FEED ── */
+.feedback-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feedback-item {
+  padding: 12px;
+  background: rgba(255,255,255,.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.feedback-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.feedback-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.feedback-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+.feedback-hospital {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.feedback-time {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.feedback-comment {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  line-height: 1.5;
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--muted);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.empty-icon { font-size: 36px; opacity: .3; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ══ SIDEBAR ══ -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">R</div>
+      <div class="logo-name">RadVision AI</div>
+      <div class="logo-sub">ADMIN DASHBOARD</div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-section">Overview</div>
+      <a class="nav-item active" href="#">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">🔬</span> Analyses
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">🩺</span> Doctor Feedback
+      </a>
+
+      <div class="nav-section">Validation</div>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">✅</span> Progress
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">📈</span> Accuracy
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">🚀</span> Deployment
+      </a>
+
+      <div class="nav-section">System</div>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">⚙️</span> Settings
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">📋</span> Logs
+      </a>
+    </div>
+
+    <div class="sidebar-bottom">
+      <a href="http://localhost:5000" class="back-btn">← Back to Website</a>
+    </div>
+  </div>
+
+  <!-- ══ MAIN ══ -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Admin Dashboard</div>
+        <div class="topbar-sub">RadVision AI — Clinical Validation Monitor</div>
+      </div>
+      <div class="topbar-right">
+        <div class="live-dot"></div>
+        <span style="font-size:11px;color:#556">Live</span>
+        <button class="refresh-btn" onclick="loadStats()">
+          ↻ Refresh
+        </button>
+        <a href="http://localhost:3000/analyzer"
+          style="padding:6px 14px;background:rgba(74,144,217,.1);
+          border:1px solid rgba(74,144,217,.2);border-radius:6px;
+          color:var(--accent);font-size:12px;text-decoration:none;">
+          Launch App
+        </a>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Metric Cards -->
+      <div class="metrics-grid">
+        <div class="metric-card metric-blue">
+          <div class="metric-icon">🔬</div>
+          <div class="metric-num" id="total-analyses">0</div>
+          <div class="metric-label">Total Analyses</div>
+          <div class="metric-change change-up" id="analyses-change">+0</div>
+        </div>
+        <div class="metric-card metric-green">
+          <div class="metric-icon">🩺</div>
+          <div class="metric-num" id="total-reviews">0</div>
+          <div class="metric-label">Doctor Reviews</div>
+          <div class="metric-change change-up">of 100 target</div>
+        </div>
+        <div class="metric-card metric-amber">
+          <div class="metric-icon">📊</div>
+          <div class="metric-num" id="accuracy-rate">0%</div>
+          <div class="metric-label">Accuracy Rate</div>
+          <div class="metric-change change-up">target: 80%</div>
+        </div>
+        <div class="metric-card metric-red">
+          <div class="metric-icon">🚀</div>
+          <div class="metric-num" id="reviews-needed">100</div>
+          <div class="metric-label">Reviews Needed</div>
+          <div class="metric-change change-down">to deploy</div>
+        </div>
+      </div>
+
+      <!-- Row 1 -->
+      <div class="dashboard-grid">
+
+        <!-- Validation Progress -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Validation Progress</div>
+            <div class="panel-badge" id="deploy-badge">
+              Validating
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="progress-wrap">
+              <div class="progress-circle"
+                id="progress-circle"
+                style="background: conic-gradient(var(--accent) 0%, #1e2130 0%)">
+                <div class="progress-num" id="progress-pct">0%</div>
+              </div>
+              <div class="progress-info">
+                <h3 id="progress-title">Collecting Feedback</h3>
+                <p id="progress-desc">
+                  Awaiting doctor validations to assess
+                  deployment readiness.
+                </p>
+              </div>
+            </div>
+
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-label">
+                <span>Correct</span>
+                <span id="correct-count">0</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill fill-green"
+                  id="correct-bar" style="width:0%"></div>
+              </div>
+
+              <div class="progress-bar-label">
+                <span>Partial</span>
+                <span id="partial-count">0</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill fill-amber"
+                  id="partial-bar" style="width:0%"></div>
+              </div>
+
+              <div class="progress-bar-label">
+                <span>Wrong</span>
+                <span id="wrong-count">0</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill fill-red"
+                  id="wrong-bar" style="width:0%"></div>
+              </div>
+            </div>
+
+            <div class="deploy-status status-not-ready" id="deploy-status">
+              <div class="deploy-icon">⏳</div>
+              <div class="deploy-text">
+                <strong id="deploy-title">
+                  Not Ready for Deployment
+                </strong>
+                <span id="deploy-desc">
+                  Need 100 reviews with 80%+ accuracy
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accuracy Breakdown -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Accuracy Breakdown</div>
+            <div class="panel-badge">Per Disease</div>
+          </div>
+          <div class="panel-body">
+            <div class="accuracy-bars">
+              <div class="acc-item">
+                <div class="acc-label">Nodule</div>
+                <div class="acc-bar">
+                  <div class="acc-fill" style="width:72%;background:var(--accent)"></div>
+                </div>
+                <div class="acc-val">72%</div>
+              </div>
+              <div class="acc-item">
+                <div class="acc-label">Effusion</div>
+                <div class="acc-bar">
+                  <div class="acc-fill" style="width:85%;background:var(--green)"></div>
+                </div>
+                <div class="acc-val">85%</div>
+              </div>
+              <div class="acc-item">
+                <div class="acc-label">Pneumonia</div>
+                <div class="acc-bar">
+                  <div class="acc-fill" style="width:68%;background:var(--accent)"></div>
+                </div>
+                <div class="acc-val">68%</div>
+              </div>
+              <div class="acc-item">
+                <div class="acc-label">Cardiomegaly</div>
+                <div class="acc-bar">
+                  <div class="acc-fill" style="width:90%;background:var(--green)"></div>
+                </div>
+                <div class="acc-val">90%</div>
+              </div>
+              <div class="acc-item">
+                <div class="acc-label">Pneumothorax</div>
+                <div class="acc-bar">
+                  <div class="acc-fill" style="width:78%;background:var(--accent)"></div>
+                </div>
+                <div class="acc-val">78%</div>
+              </div>
+              <div class="acc-item">
+                <div class="acc-label">Atelectasis</div>
+                <div class="acc-bar">
+                  <div class="acc-fill" style="width:55%;background:var(--amber)"></div>
+                </div>
+                <div class="acc-val">55%</div>
+              </div>
+              <div class="acc-item">
+                <div class="acc-label">Consolidation</div>
+                <div class="acc-bar">
+                  <div class="acc-fill" style="width:62%;background:var(--amber)"></div>
+                </div>
+                <div class="acc-val">62%</div>
+              </div>
+              <div class="acc-item">
+                <div class="acc-label">Edema</div>
+                <div class="acc-bar">
+                  <div class="acc-fill" style="width:48%;background:var(--red)"></div>
+                </div>
+                <div class="acc-val">48%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row 2 -->
+      <div class="dashboard-grid">
+
+        <!-- Recent Analyses -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Recent Analyses</div>
+            <div class="panel-badge" id="analyses-badge">0 total</div>
+          </div>
+          <div class="panel-body" style="padding:0">
+            <div id="analyses-table">
+              <div class="empty-state">
+                <div class="empty-icon">🔬</div>
+                <div>No analyses yet</div>
+                <div style="font-size:11px">
+                  Upload and analyze an X-ray to see data here
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Feedback -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Doctor Feedback</div>
+            <div class="panel-badge" id="feedback-badge">0 reviews</div>
+          </div>
+          <div class="panel-body">
+            <div class="feedback-feed" id="feedback-feed">
+              <div class="empty-state">
+                <div class="empty-icon">🩺</div>
+                <div>No feedback yet</div>
+                <div style="font-size:11px">
+                  Doctor validations will appear here
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row 3 — Recommend Stats -->
+      <div class="dashboard-grid">
+        <div class="panel full-width">
+          <div class="panel-head">
+            <div class="panel-title">
+              Doctor Recommendation Stats
+            </div>
+            <div class="panel-badge">Would recommend system?</div>
+          </div>
+          <div class="panel-body">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+              <div style="text-align:center;padding:20px;background:rgba(99,170,34,.08);
+                border:1px solid rgba(99,170,34,.2);border-radius:10px">
+                <div style="font-size:36px;font-weight:800;color:var(--green)"
+                  id="rec-yes">0</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px">
+                  YES — Recommend
+                </div>
+              </div>
+              <div style="text-align:center;padding:20px;background:rgba(239,159,39,.08);
+                border:1px solid rgba(239,159,39,.2);border-radius:10px">
+                <div style="font-size:36px;font-weight:800;color:var(--amber)"
+                  id="rec-maybe">0</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px">
+                  MAYBE — Needs work
+                </div>
+              </div>
+              <div style="text-align:center;padding:20px;background:rgba(226,75,74,.08);
+                border:1px solid rgba(226,75,74,.2);border-radius:10px">
+                <div style="font-size:36px;font-weight:800;color:var(--red)"
+                  id="rec-no">0</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px">
+                  NO — Not recommend
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = 'http://localhost:5000';
+
+async function loadStats() {
+  try {
+    const [statsRes, histRes] = await Promise.all([
+      fetch(`${BASE}/stats`),
+      fetch(`${BASE}/history`)
+    ]);
+
+    const stats = await statsRes.json();
+    const hist  = await histRes.json();
+
+    updateMetrics(stats);
+    updateProgress(stats);
+    updateAnalysesTable(hist.analyses || []);
+    updateFeedbackFeed(hist.feedback  || []);
+
+  } catch(e) {
+    console.log('Backend not reachable:', e.message);
+    showOfflineState();
+  }
+}
+
+function updateMetrics(s) {
+  document.getElementById('total-analyses').textContent =
+    s.total_reviews || 0;
+  document.getElementById('total-reviews').textContent =
+    s.total_reviews || 0;
+  document.getElementById('accuracy-rate').textContent =
+    (s.accuracy_rate || 0) + '%';
+  document.getElementById('reviews-needed').textContent =
+    s.reviews_needed || 100;
+  document.getElementById('rec-yes').textContent   = s.recommend_yes   || 0;
+  document.getElementById('rec-maybe').textContent = s.recommend_maybe || 0;
+  document.getElementById('rec-no').textContent    = s.recommend_no    || 0;
+}
+
+function updateProgress(s) {
+  const total   = s.total_reviews || 0;
+  const pct     = Math.min(100, Math.round(total / 100 * 100));
+  const acc     = s.accuracy_rate || 0;
+  const correct = s.correct_count || 0;
+  const partial = s.partial_count || 0;
+  const wrong   = s.wrong_count   || 0;
+  const ready   = s.deployment_ready;
+
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-circle').style.background =
+    `conic-gradient(var(--accent) ${pct}%, #1e2130 0%)`;
+
+  const cBar = total > 0 ? Math.round(correct / total * 100) : 0;
+  const pBar = total > 0 ? Math.round(partial / total * 100) : 0;
+  const wBar = total > 0 ? Math.round(wrong   / total * 100) : 0;
+
+  document.getElementById('correct-bar').style.width = cBar + '%';
+  document.getElementById('partial-bar').style.width = pBar + '%';
+  document.getElementById('wrong-bar').style.width   = wBar + '%';
+  document.getElementById('correct-count').textContent = correct;
+  document.getElementById('partial-count').textContent = partial;
+  document.getElementById('wrong-count').textContent   = wrong;
+
+  const badge  = document.getElementById('deploy-badge');
+  const status = document.getElementById('deploy-status');
+  const title  = document.getElementById('deploy-title');
+  const desc   = document.getElementById('deploy-desc');
+  const ptitle = document.getElementById('progress-title');
+  const pdesc  = document.getElementById('progress-desc');
+
+  if (ready) {
+    badge.textContent = 'Ready';
+    badge.style.background = 'rgba(99,170,34,.15)';
+    badge.style.color = 'var(--green)';
+    status.className = 'deploy-status status-ready';
+    title.textContent = 'Ready for Deployment!';
+    desc.textContent  =
+      `${total} reviews · ${acc}% accuracy — meets all criteria`;
+    ptitle.textContent = 'Deployment Ready!';
+    pdesc.textContent  = 'System has passed clinical validation threshold.';
+  } else {
+    badge.textContent = 'Validating';
+    ptitle.textContent = 'Collecting Feedback';
+    pdesc.textContent  =
+      `${total}/100 reviews collected. Need ${100-total} more.`;
+    title.textContent =
+      acc >= 80
+        ? `Need ${100 - total} more reviews`
+        : `Accuracy ${acc}% — need 80%+`;
+    desc.textContent =
+      `${total}/100 doctors reviewed. Current accuracy: ${acc}%`;
+  }
+}
+
+function updateAnalysesTable(analyses) {
+  const el = document.getElementById('analyses-table');
+  document.getElementById('analyses-badge').textContent =
+    analyses.length + ' total';
+
+  if (!analyses.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🔬</div>
+      <div>No analyses yet</div>
+      <div style="font-size:11px">Analyze an X-ray to see data here</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Patient</th>
+          <th>Age</th>
+          <th>Gender</th>
+          <th>Urgency</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${analyses.map((a, i) => `
+          <tr>
+            <td>${a.id || i+1}</td>
+            <td>${a.patient_name || 'Anonymous'}</td>
+            <td>${a.patient_age  || '—'}</td>
+            <td>${a.patient_gender || '—'}</td>
+            <td>
+              <span class="urgency-pill pill-${a.urgency || 'routine'}">
+                ${(a.urgency || 'routine').toUpperCase()}
+              </span>
+            </td>
+            <td>${formatTime(a.timestamp)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function updateFeedbackFeed(feedbacks) {
+  const el = document.getElementById('feedback-feed');
+  document.getElementById('feedback-badge').textContent =
+    feedbacks.length + ' reviews';
+
+  if (!feedbacks.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🩺</div>
+      <div>No feedback yet</div>
+      <div style="font-size:11px">Doctor validations appear here</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = feedbacks.map(f => `
+    <div class="feedback-item">
+      <div class="feedback-head">
+        <div class="feedback-avatar">
+          ${(f.doctor_name || 'D').substring(0,2).toUpperCase()}
+        </div>
+        <div>
+          <div class="feedback-name">${f.doctor_name || 'Unknown'}</div>
+          <div class="feedback-hospital">${f.hospital || 'Hospital N/A'}</div>
+        </div>
+        <div class="feedback-time">${formatTime(f.timestamp)}</div>
+        <span class="rating-pill rating-${f.rating || 'partial'}"
+          style="margin-left:8px">
+          ${(f.rating || 'N/A').toUpperCase()}
+        </span>
+      </div>
+      <div class="feedback-comment">
+        Recommend: ${(f.recommend || 'N/A').toUpperCase()}
+      </div>
+    </div>
+  `).join('');
+}
+
+function formatTime(ts) {
+  if (!ts) return '—';
+  try {
+    return new Date(ts).toLocaleString('en-IN', {
+      day:    '2-digit',
+      month:  'short',
+      hour:   '2-digit',
+      minute: '2-digit'
+    });
+  } catch { return ts; }
+}
+
+function showOfflineState() {
+  document.getElementById('analyses-table').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <div>Backend offline</div>
+      <div style="font-size:11px">
+        Start python app.py to see live data
+      </div>
+    </div>`;
+}
+
+// Load on page open and refresh every 30 seconds
+loadStats();
+setInterval(loadStats, 30000);
+</script>
+
+</body>
+</html>

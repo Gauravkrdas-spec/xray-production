@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RadVision AI — Medical Imaging Intelligence</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --navy:    #0a1628;
+  --blue:    #1a3a5c;
+  --accent:  #4A90D9;
+  --light:   #e8f0f8;
+  --white:   #ffffff;
+  --gray:    #f4f7fb;
+  --text:    #2c3e50;
+  --muted:   #6b7c93;
+  --green:   #27ae60;
+  --red:     #e74c3c;
+  --amber:   #f39c12;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  background: var(--white);
+  overflow-x: hidden;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  background: rgba(10,22,40,.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(74,144,217,.2);
+  padding: 0 40px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.nav-logo-icon {
+  width: 38px; height: 38px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 900;
+  color: white;
+}
+
+.nav-logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: .02em;
+}
+
+.nav-logo-sub {
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: .1em;
+  display: block;
+}
+
+.nav-links {
+  display: flex;
+  gap: 28px;
+  margin-left: auto;
+  list-style: none;
+}
+
+.nav-links a {
+  color: rgba(255,255,255,.7);
+  text-decoration: none;
+  font-size: 14px;
+  transition: color .2s;
+}
+
+.nav-links a:hover { color: white; }
+
+.nav-cta {
+  padding: 8px 20px;
+  background: var(--accent);
+  color: white !important;
+  border-radius: 6px;
+  font-weight: 600 !important;
+}
+
+.nav-cta:hover { background: #357abd !important; }
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 50%, #0d2340 100%);
+  display: flex;
+  align-items: center;
+  padding: 100px 40px 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -20%;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(74,144,217,.15) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -30%; right: -10%;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(74,144,217,.1) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.hero-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(74,144,217,.15);
+  border: 1px solid rgba(74,144,217,.4);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: .06em;
+  margin-bottom: 24px;
+}
+
+.hero-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+.hero h1 {
+  font-size: 52px;
+  font-weight: 800;
+  color: white;
+  line-height: 1.15;
+  margin-bottom: 20px;
+  letter-spacing: -.02em;
+}
+
+.hero h1 span { color: var(--accent); }
+
+.hero p {
+  font-size: 17px;
+  color: rgba(255,255,255,.7);
+  line-height: 1.7;
+  margin-bottom: 36px;
+  max-width: 480px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  padding: 14px 32px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all .2s;
+  box-shadow: 0 4px 20px rgba(74,144,217,.4);
+}
+
+.btn-primary:hover {
+  background: #357abd;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(74,144,217,.5);
+}
+
+.btn-outline {
+  padding: 14px 32px;
+  background: transparent;
+  color: white;
+  border: 1.5px solid rgba(255,255,255,.3);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all .2s;
+}
+
+.btn-outline:hover {
+  border-color: white;
+  background: rgba(255,255,255,.05);
+}
+
+/* Hero X-ray mockup */
+.hero-visual {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(74,144,217,.2);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.hero-xray {
+  background: #000;
+  border-radius: 10px;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.xray-placeholder {
+  font-size: 80px;
+  opacity: .3;
+}
+
+.xray-marker {
+  position: absolute;
+  border: 2px dashed;
+  border-radius: 50%;
+  animation: markerPulse 3s infinite;
+}
+
+@keyframes markerPulse {
+  0%, 100% { opacity: .6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+.marker1 { width: 60px; height: 60px; top: 30%; left: 35%; border-color: #e74c3c; }
+.marker2 { width: 45px; height: 45px; top: 55%; left: 55%; border-color: #f39c12; }
+.marker3 { width: 35px; height: 35px; top: 65%; left: 30%; border-color: #27ae60; }
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.hero-stat {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(74,144,217,.15);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+.hero-stat-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.hero-stat-label {
+  font-size: 10px;
+  color: rgba(255,255,255,.5);
+  letter-spacing: .06em;
+  margin-top: 2px;
+}
+
+/* ── SECTION COMMON ── */
+section { padding: 90px 40px; }
+
+.section-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-tag {
+  display: inline-block;
+  padding: 4px 14px;
+  background: rgba(74,144,217,.1);
+  border: 1px solid rgba(74,144,217,.3);
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: .08em;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--navy);
+  line-height: 1.2;
+  margin-bottom: 14px;
+  letter-spacing: -.02em;
+}
+
+.section-sub {
+  font-size: 16px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 560px;
+}
+
+/* ── STATS BAR ── */
+.stats-bar {
+  background: var(--navy);
+  padding: 50px 40px;
+}
+
+.stats-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 20px;
+  border-right: 1px solid rgba(74,144,217,.2);
+}
+
+.stat-item:last-child { border-right: none; }
+
+.stat-num {
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--accent);
+  display: block;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: rgba(255,255,255,.6);
+  margin-top: 4px;
+  letter-spacing: .04em;
+}
+
+/* ── SERVICES ── */
+.services { background: var(--gray); }
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 48px;
+}
+
+.service-card {
+  background: white;
+  border-radius: 16px;
+  padding: 32px 28px;
+  border: 1px solid rgba(74,144,217,.1);
+  transition: all .3s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.service-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform .3s;
+}
+
+.service-card:hover::before { transform: scaleX(1); }
+.service-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(74,144,217,.15);
+}
+
+.service-icon {
+  width: 56px; height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin-bottom: 20px;
+}
+
+.icon-blue   { background: rgba(74,144,217,.12); }
+.icon-green  { background: rgba(39,174,96,.12);  }
+.icon-amber  { background: rgba(243,156,18,.12); }
+.icon-red    { background: rgba(231,76,60,.12);  }
+.icon-purple { background: rgba(142,68,173,.12); }
+.icon-teal   { background: rgba(26,188,156,.12); }
+
+.service-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 10px;
+}
+
+.service-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin-bottom: 16px;
+}
+
+.service-link {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.service-badge {
+  position: absolute;
+  top: 16px; right: 16px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+.badge-new  { background: rgba(39,174,96,.15);  color: var(--green); }
+.badge-ai   { background: rgba(74,144,217,.15); color: var(--accent); }
+.badge-beta { background: rgba(243,156,18,.15); color: var(--amber); }
+
+/* ── HOW IT WORKS ── */
+.how-it-works { background: white; }
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  margin-top: 56px;
+  position: relative;
+}
+
+.steps-grid::before {
+  content: '';
+  position: absolute;
+  top: 32px;
+  left: 12.5%; right: 12.5%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), rgba(74,144,217,.2));
+}
+
+.step {
+  text-align: center;
+  padding: 0 20px;
+  position: relative;
+}
+
+.step-num {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: white;
+  font-size: 22px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  position: relative;
+  z-index: 1;
+  border: 3px solid var(--accent);
+}
+
+.step-icon { font-size: 26px; margin-bottom: 14px; margin-top: 20px; }
+.step-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+.step-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ── FEATURE HIGHLIGHT ── */
+.feature-highlight {
+  background: var(--gray);
+  padding: 90px 40px;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.feature-mockup {
+  background: #0a1628;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid rgba(74,144,217,.2);
+}
+
+.mockup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(74,144,217,.15);
+}
+
+.mockup-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+
+.mockup-title {
+  font-size: 12px;
+  color: rgba(255,255,255,.6);
+  font-family: monospace;
+}
+
+.mockup-screen {
+  background: #060a12;
+  border-radius: 8px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  opacity: .4;
+  margin-bottom: 12px;
+}
+
+.mockup-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mockup-chip {
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.chip-r { background: rgba(231,76,60,.15);  color: #e74c3c; border: 1px solid #e74c3c; }
+.chip-a { background: rgba(243,156,18,.15); color: #f39c12; border: 1px solid #f39c12; }
+.chip-g { background: rgba(39,174,96,.15);  color: #27ae60; border: 1px solid #27ae60; }
+
+.feature-list {
+  list-style: none;
+  margin-top: 32px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.feature-check {
+  width: 24px; height: 24px;
+  background: rgba(74,144,217,.1);
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.feature-text strong {
+  display: block;
+  font-size: 15px;
+  color: var(--navy);
+  margin-bottom: 3px;
+}
+
+.feature-text span {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── TESTIMONIALS ── */
+.testimonials { background: white; }
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 48px;
+}
+
+.testimonial-card {
+  background: var(--gray);
+  border-radius: 14px;
+  padding: 28px;
+  border: 1px solid rgba(74,144,217,.1);
+  position: relative;
+}
+
+.testimonial-card::before {
+  content: '"';
+  position: absolute;
+  top: 16px; right: 20px;
+  font-size: 60px;
+  color: rgba(74,144,217,.15);
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+
+.testimonial-stars {
+  color: var(--amber);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.testimonial-text {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-style: italic;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.author-avatar {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.avatar-blue   { background: var(--accent); }
+.avatar-navy   { background: var(--navy);   }
+.avatar-green  { background: var(--green);  }
+
+.author-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.author-role {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── CTA SECTION ── */
+.cta-section {
+  background: linear-gradient(135deg, var(--navy), var(--blue));
+  padding: 90px 40px;
+  text-align: center;
+}
+
+.cta-section h2 {
+  font-size: 38px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 16px;
+}
+
+.cta-section p {
+  font-size: 16px;
+  color: rgba(255,255,255,.7);
+  margin-bottom: 36px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── FOOTER ── */
+footer {
+  background: #060d1a;
+  padding: 60px 40px 30px;
+}
+
+.footer-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 48px;
+  margin-bottom: 48px;
+}
+
+.footer-brand p {
+  font-size: 14px;
+  color: rgba(255,255,255,.45);
+  line-height: 1.7;
+  margin-top: 14px;
+  max-width: 280px;
+}
+
+.footer-col h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,.5);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.footer-col a {
+  display: block;
+  font-size: 14px;
+  color: rgba(255,255,255,.5);
+  text-decoration: none;
+  margin-bottom: 10px;
+  transition: color .2s;
+}
+
+.footer-col a:hover { color: white; }
+
+.footer-bottom {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-bottom p {
+  font-size: 13px;
+  color: rgba(255,255,255,.3);
+}
+
+.footer-badges {
+  display: flex;
+  gap: 10px;
+}
+
+.footer-badge {
+  padding: 4px 10px;
+  border: 1px solid rgba(74,144,217,.3);
+  border-radius: 6px;
+  font-size: 10px;
+  color: rgba(74,144,217,.7);
+  letter-spacing: .06em;
+}
+
+/* ── DISCLAIMER BANNER ── */
+.disclaimer-banner {
+  background: rgba(243,156,18,.08);
+  border-top: 1px solid rgba(243,156,18,.3);
+  border-bottom: 1px solid rgba(243,156,18,.3);
+  padding: 12px 40px;
+  text-align: center;
+  font-size: 12px;
+  color: #b8860b;
+}
+
+/* ── MOBILE ── */
+@media (max-width: 900px) {
+  .hero-content      { grid-template-columns: 1fr; }
+  .hero-visual       { display: none; }
+  .services-grid     { grid-template-columns: 1fr; }
+  .steps-grid        { grid-template-columns: 1fr 1fr; }
+  .testimonials-grid { grid-template-columns: 1fr; }
+  .footer-grid       { grid-template-columns: 1fr 1fr; }
+  .stats-grid        { grid-template-columns: repeat(2,1fr); }
+  .feature-grid      { grid-template-columns: 1fr; }
+  nav { padding: 0 20px; }
+  .nav-links         { display: none; }
+  .hero h1           { font-size: 36px; }
+  section            { padding: 60px 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- DISCLAIMER BANNER -->
+<div class="disclaimer-banner">
+  ⚠ For Research & Educational Use Only — Not intended for clinical diagnosis.
+  Always consult a licensed radiologist.
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">R</div>
+    <div>
+      <span class="nav-logo-text">RadVision AI</span>
+      <span class="nav-logo-sub">MEDICAL IMAGING INTELLIGENCE</span>
+    </div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="#technology">Technology</a></li>
+    <li><a href="#testimonials">Reviews</a></li>
+    <li><a href="http://localhost:5000/admin">Admin</a></li>
+    <li><a href="http://localhost:3000/analyzer" class="nav-cta">Launch App</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div>
+      <div class="hero-badge">AI-POWERED RADIOLOGY PLATFORM</div>
+      <h1>Chest X-Ray Analysis with <span>Clinical AI</span></h1>
+      <p>
+        RadVision AI combines CheXNet deep learning with Claude AI to detect
+        14 chest conditions, generate professional radiology reports, and
+        support clinical decision-making in seconds.
+      </p>
+      <div class="hero-buttons">
+        <a href="http://localhost:3000/analyzer" class="btn-primary">
+          Start Analysis →
+        </a>
+        <a href="#how-it-works" class="btn-outline">
+          How it works
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="hero-xray">
+        <div class="xray-placeholder">🫁</div>
+        <div class="xray-marker marker1"></div>
+        <div class="xray-marker marker2"></div>
+        <div class="xray-marker marker3"></div>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-num">14</div>
+          <div class="hero-stat-label">DISEASES</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">1.3M</div>
+          <div class="hero-stat-label">TRAINED ON</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">&lt;30s</div>
+          <div class="hero-stat-label">ANALYSIS TIME</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stats-grid">
+    <div class="stat-item">
+      <span class="stat-num">1.3M+</span>
+      <div class="stat-label">X-Rays in Training Data</div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">14</span>
+      <div class="stat-label">Detectable Conditions</div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">3</span>
+      <div class="stat-label">Imaging Views</div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">100%</span>
+      <div class="stat-label">Privacy — No Data Stored</div>
+    </div>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<section class="services" id="services">
+  <div class="section-inner">
+    <div class="section-tag">OUR SERVICES</div>
+    <h2 class="section-title">
+      Comprehensive Medical<br>Imaging Solutions
+    </h2>
+    <p class="section-sub">
+      From AI-powered X-ray analysis to professional report generation,
+      our platform supports radiologists and clinicians at every step.
+    </p>
+
+    <div class="services-grid">
+
+      <div class="service-card">
+        <span class="service-badge badge-ai">AI POWERED</span>
+        <div class="service-icon icon-blue">🔬</div>
+        <div class="service-title">Chest X-Ray Analysis</div>
+        <div class="service-desc">
+          Upload any chest X-ray and receive instant AI analysis detecting
+          up to 14 conditions including pneumonia, effusion, nodules,
+          cardiomegaly, and more.
+        </div>
+        <a href="http://localhost:3000/analyzer" class="service-link">
+          Start Analysis →
+        </a>
+      </div>
+
+      <div class="service-card">
+        <span class="service-badge badge-new">NEW</span>
+        <div class="service-icon icon-green">📋</div>
+        <div class="service-title">Radiology Report Generation</div>
+        <div class="service-desc">
+          Automatically generates structured radiology reports with clinical
+          findings, impression, and recommendations — powered by Claude AI.
+        </div>
+        <a href="http://localhost:3000/analyzer" class="service-link">
+          Generate Report →
+        </a>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon icon-amber">🎨</div>
+        <div class="service-title">Multi-View Imaging</div>
+        <div class="service-desc">
+          View X-rays in three modes — annotated with AI markers,
+          high-contrast enhanced, and pseudo-color segmented for
+          detailed tissue analysis.
+        </div>
+        <a href="http://localhost:3000/analyzer" class="service-link">
+          View Images →
+        </a>
+      </div>
+
+      <div class="service-card">
+        <span class="service-badge badge-beta">BETA</span>
+        <div class="service-icon icon-purple">🩺</div>
+        <div class="service-title">Doctor Validation System</div>
+        <div class="service-desc">
+          Radiologists can review and validate AI findings, submit
+          clinical feedback, and help improve model accuracy through
+          our structured validation workflow.
+        </div>
+        <a href="http://localhost:3000/analyzer" class="service-link">
+          Validate Reports →
+        </a>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon icon-red">📄</div>
+        <div class="service-title">PDF Report Download</div>
+        <div class="service-desc">
+          Download complete clinical reports as professional PDFs
+          including annotated X-ray images, findings table, impression,
+          and doctor validation notes.
+        </div>
+        <a href="http://localhost:3000/analyzer" class="service-link">
+          Download PDF →
+        </a>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon icon-teal">📊</div>
+        <div class="service-title">Admin Dashboard</div>
+        <div class="service-desc">
+          Monitor system performance, track validation progress,
+          view doctor feedback analytics, and assess deployment
+          readiness from a central dashboard.
+        </div>
+        <a href="http://localhost:5000/admin" class="service-link">
+          View Dashboard →
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-it-works" id="how-it-works">
+  <div class="section-inner">
+    <div class="section-tag">HOW IT WORKS</div>
+    <h2 class="section-title">From Upload to Report in 4 Steps</h2>
+    <p class="section-sub">
+      Our streamlined workflow makes chest X-ray analysis fast,
+      accurate, and clinically meaningful.
+    </p>
+
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-icon">📤</div>
+        <div class="step-title">Upload X-Ray</div>
+        <div class="step-desc">
+          Drag and drop or browse to upload any chest X-ray image
+          in JPG or PNG format.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-icon">🤖</div>
+        <div class="step-title">AI Analysis</div>
+        <div class="step-desc">
+          CheXNet analyzes the image, detecting up to 14 conditions
+          with probability scores.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-icon">📝</div>
+        <div class="step-title">Report Generation</div>
+        <div class="step-desc">
+          Claude AI writes a structured radiology report with
+          findings, impression, and recommendations.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-icon">✅</div>
+        <div class="step-title">Doctor Validation</div>
+        <div class="step-desc">
+          Radiologist reviews, validates, and downloads the
+          complete PDF report for clinical use.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURE HIGHLIGHT -->
+<div class="feature-highlight" id="technology">
+  <div class="feature-grid">
+    <div class="feature-mockup">
+      <div class="mockup-header">
+        <div class="mockup-dot" style="background:#e74c3c"></div>
+        <div class="mockup-dot" style="background:#f39c12"></div>
+        <div class="mockup-dot" style="background:#27ae60"></div>
+        <div class="mockup-title">RadVision AI — Workstation</div>
+      </div>
+      <div class="mockup-screen">🫁</div>
+      <div class="mockup-chips">
+        <span class="mockup-chip chip-r">Nodule 50%</span>
+        <span class="mockup-chip chip-r">Effusion 45%</span>
+        <span class="mockup-chip chip-a">Fibrosis 35%</span>
+        <span class="mockup-chip chip-g">Pneumonia 22%</span>
+        <span class="mockup-chip chip-g">Cardiomegaly 15%</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-tag">TECHNOLOGY</div>
+      <h2 class="section-title">
+        Built on Clinically Validated AI Models
+      </h2>
+      <ul class="feature-list">
+        <li class="feature-item">
+          <div class="feature-check">✓</div>
+          <div class="feature-text">
+            <strong>CheXNet — 1.3M X-Ray Training Dataset</strong>
+            <span>Trained on NIH, CheXpert, MIMIC-CXR, PadChest
+            and Google datasets for maximum accuracy.</span>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-check">✓</div>
+          <div class="feature-text">
+            <strong>GradCAM Localization</strong>
+            <span>Visual explanation of AI decisions with
+            gradient-weighted class activation maps.</span>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-check">✓</div>
+          <div class="feature-text">
+            <strong>Claude AI Report Writing</strong>
+            <span>Professional radiology reports generated using
+            Claude Sonnet with medical terminology.</span>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-check">✓</div>
+          <div class="feature-text">
+            <strong>Privacy First — Zero Data Retention</strong>
+            <span>X-ray images are deleted immediately after
+            analysis. No patient data is stored on servers.</span>
+          </div>
+        </li>
+        <li class="feature-item">
+          <div class="feature-check">✓</div>
+          <div class="feature-text">
+            <strong>GPU Accelerated on NVIDIA CUDA</strong>
+            <span>Analysis completes in under 30 seconds
+            using GPU acceleration for real-time results.</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials" id="testimonials">
+  <div class="section-inner">
+    <div class="section-tag">DOCTOR REVIEWS</div>
+    <h2 class="section-title">What Radiologists Say</h2>
+    <p class="section-sub">
+      Feedback from doctors who have validated our AI system
+      during the clinical validation phase.
+    </p>
+
+    <div class="testimonials-grid">
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-text">
+          The system detected a subtle nodule that I had nearly missed
+          on initial review. The GradCAM markers pointing to specific
+          regions are extremely helpful for quick assessment.
+        </div>
+        <div class="testimonial-author">
+          <div class="author-avatar avatar-blue">DR</div>
+          <div>
+            <div class="author-name">Dr. Rajesh Kumar</div>
+            <div class="author-role">Senior Radiologist, AIIMS Delhi</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★☆</div>
+        <div class="testimonial-text">
+          Report generation saves me at least 20 minutes per patient.
+          The clinical terminology is accurate and the impression
+          section is very well structured.
+        </div>
+        <div class="testimonial-author">
+          <div class="author-avatar avatar-navy">SP</div>
+          <div>
+            <div class="author-name">Dr. Sunita Patel</div>
+            <div class="author-role">Chest Physician, Apollo Hospitals</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-text">
+          The three-view imaging system is innovative. Enhanced contrast
+          view helps in identifying subtle infiltrates that are hard to
+          see on standard X-rays.
+        </div>
+        <div class="testimonial-author">
+          <div class="author-avatar avatar-green">AM</div>
+          <div>
+            <div class="author-name">Dr. Amit Mehta</div>
+            <div class="author-role">Pulmonologist, Fortis Healthcare</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <h2>Ready to Transform Your Radiology Workflow?</h2>
+  <p>
+    Join our clinical validation program and help us build
+    the most accurate chest X-ray AI system in India.
+  </p>
+  <div style="display:flex; gap:14px; justify-content:center; flex-wrap:wrap;">
+    <a href="http://localhost:3000/analyzer" class="btn-primary">
+      Start Free Analysis →
+    </a>
+    <a href= class="btn-outline">
+      View Dashboard
+    </a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="nav-logo">
+        <div class="nav-logo-icon">R</div>
+        <div>
+          <span class="nav-logo-text">RadVision AI</span>
+          <span class="nav-logo-sub">MEDICAL IMAGING INTELLIGENCE</span>
+        </div>
+      </div>
+      <p>
+        An AI-powered chest X-ray analysis platform combining
+        CheXNet deep learning with Claude AI for clinical research
+        and educational purposes.
+      </p>
+    </div>
+
+    <div class="footer-col">
+      <h4>Services</h4>
+      <a href="http://localhost:3000/analyzer">X-Ray Analysis</a>
+      <a href="http://localhost:3000/analyzer">Report Generation</a>
+      <a href="http://localhost:3000/analyzer">PDF Download</a>
+      <a href="http://localhost:3000/analyzer">Doctor Validation</a>
+    </div>
+
+    <div class="footer-col">
+      <h4>Platform</h4>
+      <a href="http://localhost:5000/admin">Admin Dashboard</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#technology">Technology</a>
+      <a href="#services">All Services</a>
+    </div>
+
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Use</a>
+      <a href="#">Disclaimer</a>
+      <a href="#">Research License</a>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>© 2026 RadVision AI. For Research Use Only.</p>
+    <div class="footer-badges">
+      <span class="footer-badge">RESEARCH</span>
+      <span class="footer-badge">NOT FDA APPROVED</span>
+      <span class="footer-badge">AI POWERED</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

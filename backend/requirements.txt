@@ -1,0 +1,15 @@
+flask
+flask-cors
+python-dotenv
+requests
+pillow
+numpy
+scikit-image
+torch
+torchvision
+torchxrayvision
+# evaluation pipeline only
+pandas
+matplotlib
+scikit-learn
+tqdm
