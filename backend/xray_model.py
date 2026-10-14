@@ -143,7 +143,19 @@ def get_gradcam_location(model, image_path, disease_idx, device):
 
 
 # ── Main analysis function ────────────────────────────
-def analyze_xray(image_path, model, device):
+def _prior(name):
+    region = DISEASE_REGIONS.get(name, {'x': 0.5, 'y': 0.5, 'r': 0.07})
+    return {'x': region['x'], 'y': region['y'], 'radius': region['r'], 'loc_source': 'prior'}
+
+
+def analyze_xray(image_path, model, device, use_gradcam=True, return_probs=False):
+    """Classify one radiograph and localise its top-5 findings.
+
+    use_gradcam=False skips the backward passes and uses the anatomical prior
+    positions for every marker (the "without GradCAM" ablation arm).
+    return_probs=True also returns {disease: probability in [0, 1]} for all 14
+    diseases, untruncated, for ROC/AUC evaluation.
+    """
     try:
         # Step 1: Get predictions without gradients (fast)
         tensor = preprocess_image(image_path).to(device)
@@ -152,14 +164,18 @@ def analyze_xray(image_path, model, device):
 
         probs = predictions.squeeze().cpu().numpy()
 
-        # Step 2: Build findings list
+        # Step 2: Build findings list.
+        # The model's outputs follow model.pathologies (torchxrayvision order),
+        # NOT the NIH order of DISEASES, so each disease is looked up by name.
+        all_probs = {}
         findings = []
-        for i, disease in enumerate(DISEASES):
-            if i >= len(probs):
+        for i, disease in enumerate(model.pathologies):
+            if disease not in DISEASES or i >= len(probs):
                 continue
 
             prob         = float(probs[i])
             prob         = max(0.0, min(1.0, prob))
+            all_probs[disease] = prob
             prob_percent = round(prob * 100, 2)
 
             if prob_percent > 10:
@@ -174,45 +190,32 @@ def analyze_xray(image_path, model, device):
                     'disease_idx': i
                 })
 
+        missing = [d for d in DISEASES if d not in all_probs]
+        if missing:
+            raise ValueError(f"Model does not output: {missing}")
+
         # Sort by probability
         findings.sort(key=lambda x: x['probability'], reverse=True)
 
-        # Step 3: Get locations for top 5 findings using GradCAM
+        # Step 3: Locations for the top-5 findings (GradCAM, else anatomical prior)
         for finding in findings[:5]:
             idx      = finding.pop('disease_idx')
-            location = get_gradcam_location(model, image_path, idx, device)
-
+            location = get_gradcam_location(model, image_path, idx, device) if use_gradcam else None
             if location:
-                # GradCAM succeeded
-                finding['x']      = location['x']
-                finding['y']      = location['y']
-                finding['radius'] = location['radius']
+                finding.update(x=location['x'], y=location['y'],
+                               radius=location['radius'], loc_source='gradcam')
             else:
-                # Fall back to anatomical position
-                region = DISEASE_REGIONS.get(
-                    finding['name'],
-                    {'x': 0.5, 'y': 0.5, 'r': 0.07}
-                )
-                finding['x']      = region['x']
-                finding['y']      = region['y']
-                finding['radius'] = region['r']
+                finding.update(_prior(finding['name']))
 
-        # Remove disease_idx from remaining findings (no location needed)
+        # Remaining findings always use the anatomical prior position
         for finding in findings[5:]:
             finding.pop('disease_idx', None)
-            region = DISEASE_REGIONS.get(
-                finding['name'],
-                {'x': 0.5, 'y': 0.5, 'r': 0.07}
-            )
-            finding['x']      = region['x']
-            finding['y']      = region['y']
-            finding['radius'] = region['r']
+            finding.update(_prior(finding['name']))
 
         print(f"Found {len(findings)} findings")
-        return findings
+        return (findings, all_probs) if return_probs else findings
 
     except Exception as e:
         print(f"Analysis error: {e}")
         import traceback
         traceback.print_exc()
-        return []
