@@ -3,12 +3,19 @@ RadVision AI — Evaluation Pipeline
 Indiana University Chest X-Ray Dataset (IU X-Ray)
 
 Run from your backend folder:
-    python evaluation_pipeline.py
+    python evaluation_pipeline.py --location gradcam --tag with_gradcam
+    python evaluation_pipeline.py --location prior   --tag without_gradcam
+    python ../analysis/statistics.py <without_gradcam per_image csv> <with_gradcam per_image csv>
+
+--location controls the GradCAM ablation:
+    gradcam : top-5 markers from GradCAM; marker locations are given to the LLM
+    prior   : GradCAM switched off; anatomical prior locations given to the LLM
+    none    : GradCAM switched off; no locations in the prompt
 
 Results saved to OUTPUT_DIR (see config below).
 """
 
-import os, sys, json, time, warnings
+import os, sys, json, time, warnings, argparse, re
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -23,17 +30,30 @@ from tqdm import tqdm
 warnings.filterwarnings('ignore')
 
 # ── Add backend to path so we can import xray_model and report ──────────────
-BACKEND_DIR = r"C:\Users\gaura\xray-production\backend"
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BACKEND_DIR)
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  CONFIGURATION — edit these paths if needed
 # ══════════════════════════════════════════════════════════════════════════════
 
-IMAGE_DIR   = r"C:\Users\gaura\OneDrive\Desktop\xray_project\iu_xray\images\images_normalized"
-PROJ_CSV    = r"C:\Users\gaura\OneDrive\Desktop\xray_project\iu_xray\indiana_projections.csv"
-REPORT_CSV  = r"C:\Users\gaura\OneDrive\Desktop\xray_project\iu_xray\indiana_reports.csv"
-OUTPUT_DIR  = r"C:\Users\gaura\OneDrive\Desktop\xray_project\evaluation_results"
+# Paths can also be set with environment variables IU_XRAY_DIR / EVAL_OUTPUT_DIR
+# or the --data-dir / --output-dir command-line options.
+IU_XRAY_DIR = os.getenv("IU_XRAY_DIR", r"C:\Users\gaura\OneDrive\Desktop\xray_project\iu_xray")
+IMAGE_DIR   = os.path.join(IU_XRAY_DIR, "images", "images_normalized")
+PROJ_CSV    = os.path.join(IU_XRAY_DIR, "indiana_projections.csv")
+REPORT_CSV  = os.path.join(IU_XRAY_DIR, "indiana_reports.csv")
+OUTPUT_DIR  = os.getenv("EVAL_OUTPUT_DIR", os.path.join(os.path.dirname(BACKEND_DIR), "evaluation_results_v2"))
+
+# Random seed for the 200-image sample (simple random sampling).
+# 42 is the value used for the original May 2026 runs.
+SEED = 42
+
+# Decision threshold for sensitivity / specificity / precision
+THRESHOLD = 0.30
+
+# LLM temperature for evaluation runs (0 = reproducible)
+LLM_TEMPERATURE = 0
 
 # How many images to evaluate
 # 200  → ~15 minutes, good for testing
@@ -42,7 +62,7 @@ OUTPUT_DIR  = r"C:\Users\gaura\OneDrive\Desktop\xray_project\evaluation_results"
 MAX_IMAGES = 200
 
 # Set True to also generate Claude reports and compute BLEU/ROUGE
-# Each call costs ~$0.01 — 200 images ≈ $2.00
+# Each call costs ~$0.01 — 200 images ≈ $2.00 per run
 RUN_REPORT_EVAL = True
 
 # Only evaluate frontal (PA) views — CheXNet is trained on these
@@ -124,47 +144,42 @@ def parse_mesh(mesh_str):
 #  SIMPLE BLEU (no NLTK dependency)
 # ══════════════════════════════════════════════════════════════════════════════
 
+def tokenize(text):
+    """Lower-case word tokens; punctuation removed (same for reference and hypothesis)."""
+    return re.findall(r"[a-z0-9]+", str(text).lower())
+
+
 def simple_bleu(reference, hypothesis, n=2):
-    """Compute BLEU-n between two text strings without NLTK."""
-    def ngrams(tokens, n):
-        return [tuple(tokens[i:i+n]) for i in range(len(tokens)-n+1)]
+    """Standard sentence-level BLEU-n (Papineni et al., 2002), no NLTK dependency.
 
-    ref_tokens = str(reference).lower().split()
-    hyp_tokens = str(hypothesis).lower().split()
-
-    if not hyp_tokens or not ref_tokens:
+    Uniform weights 1/n over clipped 1..n-gram precisions, brevity penalty
+    BP = 1 if c > r else exp(1 - r/c). No smoothing: if any p_k is zero the
+    score is zero, as in the original definition.
+    """
+    from collections import Counter
+    ref, hyp = tokenize(reference), tokenize(hypothesis)
+    if not hyp or not ref:
         return 0.0
-
-    scores = []
-    for i in range(1, n+1):
-        ref_ng = ngrams(ref_tokens, i)
-        hyp_ng = ngrams(hyp_tokens, i)
-        if not hyp_ng:
-            scores.append(0.0)
-            continue
-        ref_count = {}
-        for ng in ref_ng:
-            ref_count[ng] = ref_count.get(ng, 0) + 1
-        matches = 0
-        for ng in hyp_ng:
-            if ref_count.get(ng, 0) > 0:
-                matches += 1
-                ref_count[ng] -= 1
-        scores.append(matches / len(hyp_ng))
-
-    if not scores or all(s == 0 for s in scores):
-        return 0.0
-
-    # Brevity penalty
-    bp = min(1.0, len(hyp_tokens) / max(1, len(ref_tokens)))
-    geo_mean = np.exp(np.mean([np.log(s) for s in scores if s > 0])) if any(s > 0 for s in scores) else 0
-    return round(bp * geo_mean, 4)
+    log_p = 0.0
+    for k in range(1, n + 1):
+        ref_ng = Counter(tuple(ref[i:i+k]) for i in range(len(ref) - k + 1))
+        hyp_ng = Counter(tuple(hyp[i:i+k]) for i in range(len(hyp) - k + 1))
+        total = sum(hyp_ng.values())
+        if total == 0:
+            return 0.0
+        clipped = sum(min(c, ref_ng[g]) for g, c in hyp_ng.items())
+        if clipped == 0:
+            return 0.0
+        log_p += np.log(clipped / total) / n
+    c, r = len(hyp), len(ref)
+    bp = 1.0 if c > r else np.exp(1 - r / c)
+    return float(bp * np.exp(log_p))
 
 
 def rouge_l(reference, hypothesis):
     """Compute ROUGE-L F1 (longest common subsequence)."""
-    ref  = str(reference).lower().split()
-    hyp  = str(hypothesis).lower().split()
+    ref  = tokenize(reference)
+    hyp  = tokenize(hypothesis)
     if not ref or not hyp:
         return 0.0
     m, n = len(ref), len(hyp)
@@ -178,7 +193,7 @@ def rouge_l(reference, hypothesis):
     rec  = lcs / m if m else 0
     if prec + rec == 0:
         return 0.0
-    return round(2 * prec * rec / (prec + rec), 4)
+    return float(2 * prec * rec / (prec + rec))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -231,8 +246,9 @@ def plot_auc_bar(metrics_df, outpath):
     fig.patch.set_facecolor('white')
     ax.set_facecolor('#f8f9fa')
 
-    diseases = metrics_df['Disease'].tolist()
-    aucs     = metrics_df['AUC'].tolist()
+    ev       = metrics_df.dropna(subset=['AUC'])      # evaluable conditions only
+    diseases = ev['Disease'].tolist()
+    aucs     = ev['AUC'].tolist()
     colors   = ['#2ecc71' if a >= 0.85 else '#f39c12' if a >= 0.75 else '#e74c3c'
                 for a in aucs]
 
@@ -253,13 +269,15 @@ def plot_auc_bar(metrics_df, outpath):
         Patch(color='#f39c12', label='AUC ≥ 0.75 (medium)'),
         Patch(color='#e74c3c', label='AUC < 0.75 (low)'),
     ]
-    ax.legend(handles=legend_handles, fontsize=9, loc='upper right')
+    legend_handles += [h for h in ax.get_legend_handles_labels()[0]]
+    ax.legend(handles=legend_handles, fontsize=9, loc='upper left',
+              bbox_to_anchor=(1.01, 1.0), borderaxespad=0)
 
     ax.set_xlabel('Pathology', fontsize=12)
     ax.set_ylabel('AUC', fontsize=12)
     ax.set_title('Per-Disease AUC — RadVision AI on IU Chest X-Ray Dataset',
                  fontsize=13, fontweight='bold')
-    ax.set_ylim([0.4, 1.05])
+    ax.set_ylim([0.4, 1.06])
     ax.set_xticklabels(diseases, rotation=35, ha='right', fontsize=9)
     ax.grid(True, axis='y', alpha=0.3, linestyle='--', zorder=0)
     plt.tight_layout()
@@ -268,6 +286,7 @@ def plot_auc_bar(metrics_df, outpath):
 
 
 def plot_sensitivity_specificity(metrics_df, outpath):
+    metrics_df = metrics_df.dropna(subset=['AUC'])   # evaluable conditions only
     fig, ax = plt.subplots(figsize=(12, 6))
     fig.patch.set_facecolor('white')
     ax.set_facecolor('#f8f9fa')
@@ -435,6 +454,7 @@ def plot_prediction_distributions(all_preds, all_labels, outpath):
 
 def plot_summary_dashboard(metrics_df, n_images, mean_auc,
                            bleu1_mean, bleu2_mean, rouge_mean, outpath):
+    metrics_df = metrics_df.dropna(subset=['AUC'])   # evaluable conditions only
     """One-page summary dashboard."""
     fig = plt.figure(figsize=(16, 10))
     fig.patch.set_facecolor('#1a1a2e')
@@ -506,7 +526,7 @@ def plot_summary_dashboard(metrics_df, n_images, mean_auc,
 #  METRICS CALCULATION
 # ══════════════════════════════════════════════════════════════════════════════
 
-def calculate_metrics(all_preds, all_labels, threshold=0.3):
+def calculate_metrics(all_preds, all_labels, threshold=THRESHOLD):
     """Compute per-disease AUC, sensitivity, specificity, TP, FP, TN, FN."""
     from sklearn.metrics import roc_auc_score
 
@@ -520,7 +540,7 @@ def calculate_metrics(all_preds, all_labels, threshold=0.3):
             rows.append({
                 'Disease': disease, 'AUC': np.nan,
                 'Sensitivity': np.nan, 'Specificity': np.nan,
-                'Accuracy': np.nan,
+                'Accuracy': np.nan, 'Precision': np.nan,
                 'TP': 0, 'FP': 0, 'TN': 0, 'FN': 0,
                 'N_positive': int(pos), 'N_total': len(gt)
             })
@@ -540,6 +560,7 @@ def calculate_metrics(all_preds, all_labels, threshold=0.3):
         sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
         accuracy    = (tp + tn) / len(gt) if len(gt) > 0 else 0.0
+        precision   = tp / (tp + fp) if (tp + fp) > 0 else 0.0
 
         rows.append({
             'Disease':     disease,
@@ -547,6 +568,7 @@ def calculate_metrics(all_preds, all_labels, threshold=0.3):
             'Sensitivity': round(sensitivity, 4),
             'Specificity': round(specificity, 4),
             'Accuracy':    round(accuracy, 4),
+            'Precision':   round(precision, 4),
             'TP': tp, 'FP': fp, 'TN': tn, 'FN': fn,
             'N_positive':  int(pos),
             'N_total':     len(gt)
@@ -559,6 +581,7 @@ def calculate_metrics(all_preds, all_labels, threshold=0.3):
         'Sensitivity': round(df['Sensitivity'].mean(), 4),
         'Specificity': round(df['Specificity'].mean(), 4),
         'Accuracy':    round(df['Accuracy'].mean(), 4),
+        'Precision':   round(df['Precision'].mean(), 4),
         'TP': df['TP'].sum(), 'FP': df['FP'].sum(),
         'TN': df['TN'].sum(), 'FN': df['FN'].sum(),
         'N_positive':  df['N_positive'].sum(),
@@ -572,142 +595,151 @@ def calculate_metrics(all_preds, all_labels, threshold=0.3):
 #  MAIN PIPELINE
 # ══════════════════════════════════════════════════════════════════════════════
 
+def parse_args():
+    p = argparse.ArgumentParser(description="RadVision AI evaluation on IU X-Ray")
+    p.add_argument("--location", choices=["gradcam", "prior", "none"], default="gradcam",
+                   help="marker source given to the LLM (ablation switch)")
+    p.add_argument("--tag", default=None, help="name of the output sub-folder")
+    p.add_argument("--data-dir", default=None, help="IU X-Ray folder (images/, indiana_*.csv)")
+    p.add_argument("--output-dir", default=None)
+    p.add_argument("--max-images", type=int, default=MAX_IMAGES)
+    p.add_argument("--seed", type=int, default=SEED)
+    p.add_argument("--no-report", action="store_true", help="skip LLM report generation")
+    return p.parse_args()
+
+
 def main():
+    global IMAGE_DIR, PROJ_CSV, REPORT_CSV, RUN_REPORT_EVAL
+    args = parse_args()
+    if args.data_dir:
+        IMAGE_DIR  = os.path.join(args.data_dir, "images", "images_normalized")
+        PROJ_CSV   = os.path.join(args.data_dir, "indiana_projections.csv")
+        REPORT_CSV = os.path.join(args.data_dir, "indiana_reports.csv")
+    if args.no_report:
+        RUN_REPORT_EVAL = False
+    use_gradcam = args.location == "gradcam"
+    include_location = args.location != "none"
+    tag = args.tag or f"location_{args.location}"
+    out_dir = os.path.join(args.output_dir or OUTPUT_DIR, tag)
+
     print("=" * 60)
     print("  RadVision AI — Evaluation Pipeline")
     print("  Indiana University Chest X-Ray Dataset")
+    print(f"  location={args.location}  seed={args.seed}  max_images={args.max_images}")
     print("=" * 60)
 
-    # ── Create output directory ──────────────────────────────────────────────
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # ── Load data ────────────────────────────────────────────────────────────
     print("\n[1/6] Loading CSV files...")
     proj_df   = pd.read_csv(PROJ_CSV)
     report_df = pd.read_csv(REPORT_CSV)
-
     print(f"  Projections: {len(proj_df)} rows, {proj_df['uid'].nunique()} patients")
     print(f"  Reports:     {len(report_df)} rows")
 
-    # ── Filter frontal views ─────────────────────────────────────────────────
     if FRONTAL_ONLY:
         proj_df = proj_df[proj_df['projection'] == 'Frontal'].copy()
         print(f"  Frontal views only: {len(proj_df)} images")
 
-    # ── Merge with report labels ─────────────────────────────────────────────
-    merged = proj_df.merge(report_df[['uid','MeSH','findings','impression']],
+    merged = proj_df.merge(report_df[['uid', 'MeSH', 'findings', 'impression']],
                            on='uid', how='left')
-
-    # ── Keep only images that exist on disk ──────────────────────────────────
-    merged['full_path'] = merged['filename'].apply(
-        lambda f: os.path.join(IMAGE_DIR, f))
+    merged['full_path'] = merged['filename'].apply(lambda f: os.path.join(IMAGE_DIR, f))
     merged['exists'] = merged['full_path'].apply(os.path.exists)
     merged = merged[merged['exists']].copy()
-    print(f"  Images found on disk: {len(merged)}")
-
-    if len(merged) == 0:
-        print("ERROR: No images found. Check IMAGE_DIR path.")
+    n_frontal_on_disk = len(merged)
+    print(f"  Images found on disk: {n_frontal_on_disk}")
+    if n_frontal_on_disk == 0:
+        print("ERROR: No images found. Check --data-dir / IU_XRAY_DIR.")
         return
 
-    # ── Limit sample size ────────────────────────────────────────────────────
-    if MAX_IMAGES and len(merged) > MAX_IMAGES:
-        merged = merged.sample(n=MAX_IMAGES, random_state=42).reset_index(drop=True)
-        print(f"  Sampled: {len(merged)} images (MAX_IMAGES={MAX_IMAGES})")
+    # Simple random sample with a fixed seed (same images in every run)
+    if args.max_images and len(merged) > args.max_images:
+        merged = merged.sample(n=args.max_images, random_state=args.seed).reset_index(drop=True)
+        print(f"  Sampled: {len(merged)} images (seed={args.seed})")
 
     # ── Load model ───────────────────────────────────────────────────────────
     print("\n[2/6] Loading CheXNet model...")
-    try:
-        from xray_model import load_model, analyze_xray
-        model, device = load_model()
-    except ImportError:
-        print("ERROR: Cannot import xray_model. Make sure BACKEND_DIR is correct.")
-        print(f"  BACKEND_DIR = {BACKEND_DIR}")
-        return
+    from xray_model import load_model, analyze_xray
+    model, device = load_model()
+    print(f"  Model output order: {list(model.pathologies)[:14]}")
 
     if RUN_REPORT_EVAL:
-        try:
-            from report import generate_report
-            print("  Claude report generator loaded.")
-        except ImportError:
-            print("  WARNING: Cannot import report.py — skipping report evaluation.")
-            globals()['RUN_REPORT_EVAL'] = False
+        from report import generate_report, MODEL_NAME
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            print("ERROR: ANTHROPIC_API_KEY is not set (backend/.env). Use --no-report to skip reports.")
+            return
+        print(f"  Claude report generator loaded ({MODEL_NAME}, temperature={LLM_TEMPERATURE}).")
 
     # ── Run inference ────────────────────────────────────────────────────────
     print(f"\n[3/6] Running inference on {len(merged)} images...")
-    print("  (This will take a while — grab a coffee!)")
-
-    all_preds    = []   # list of dicts {disease: probability}
-    all_labels   = []   # list of dicts {disease: 0 or 1}
-    bleu_scores  = []   # list of dicts {bleu1, bleu2}
-    rouge_scores = []   # list of floats
-
+    all_preds, all_labels = [], []
+    bleu_scores, rouge_scores = [], []
     results_rows = []
+    n_report_errors = 0
+    n_no_reference = 0
 
-    for idx, row in tqdm(merged.iterrows(), total=len(merged),
-                         desc="Processing", unit="img"):
+    for idx, row in tqdm(merged.iterrows(), total=len(merged), desc="Processing", unit="img"):
         img_path = row['full_path']
-
-        # Ground truth from MeSH
         gt_diseases = parse_mesh(row.get('MeSH', ''))
         gt_dict = {d: int(d in gt_diseases) for d in DISEASES}
 
-        # CheXNet inference
-        try:
-            findings = analyze_xray(img_path, model, device)
-        except Exception as e:
-            print(f"\n  WARNING: Failed {row['filename']}: {e}")
+        out = analyze_xray(img_path, model, device, use_gradcam=use_gradcam, return_probs=True)
+        if out is None:
+            print(f"\n  WARNING: Failed {row['filename']}")
             continue
-
-        # Prediction probabilities dict
-        pred_dict = {d: 0.0 for d in DISEASES}
-        for f in findings:
-            if f['name'] in pred_dict:
-                pred_dict[f['name']] = f['probability'] / 100.0
+        findings, pred_dict = out
 
         all_preds.append(pred_dict)
         all_labels.append(gt_dict)
 
-        # Report quality evaluation
-        b1, b2, rl_score = 0.0, 0.0, 0.0
-        ai_report_text = ''
+        b1 = b2 = rl_score = np.nan
+        ai_text, real_text, scored, report_error = '', '', False, False
+        findings_txt = row.get('findings', '')
+        impression_txt = row.get('impression', '')
+        real_text = ' '.join(str(t) for t in (findings_txt, impression_txt) if pd.notna(t)).strip()
 
         if RUN_REPORT_EVAL:
-            try:
-                report = generate_report(findings)
-                ai_text = (report.get('findings', '') + ' ' +
-                           report.get('impression', '')).strip()
-                real_text = (str(row.get('findings', '')) + ' ' +
-                             str(row.get('impression', ''))).strip()
+            report = generate_report(findings, include_location=include_location,
+                                     temperature=LLM_TEMPERATURE)
+            report_error = bool(report.get('error', False))
+            ai_text = (str(report.get('findings', '')) + ' ' +
+                       str(report.get('impression', ''))).strip()
+            if report_error:
+                n_report_errors += 1
+            elif not real_text:
+                n_no_reference += 1
+            elif ai_text:
+                b1 = simple_bleu(real_text, ai_text, n=1)
+                b2 = simple_bleu(real_text, ai_text, n=2)
+                rl_score = rouge_l(real_text, ai_text)
+                bleu_scores.append({'bleu1': b1, 'bleu2': b2})
+                rouge_scores.append(rl_score)
+                scored = True
 
-                if ai_text and real_text and real_text != 'nan nan':
-                    b1 = simple_bleu(real_text, ai_text, n=1)
-                    b2 = simple_bleu(real_text, ai_text, n=2)
-                    rl_score = rouge_l(real_text, ai_text)
-                    bleu_scores.append({'bleu1': b1, 'bleu2': b2})
-                    rouge_scores.append(rl_score)
-                    ai_report_text = ai_text[:200]
-            except Exception as e:
-                pass
-
-        # Save per-image result
         results_rows.append({
             'uid':          row['uid'],
             'filename':     row['filename'],
-            'gt_diseases':  '|'.join(gt_diseases) if gt_diseases else 'Normal',
+            'gt_diseases':  '|'.join(sorted(gt_diseases)) if gt_diseases else 'Normal',
             'top_pred':     findings[0]['name'] if findings else 'None',
             'top_prob':     findings[0]['probability'] if findings else 0,
             'n_findings':   len(findings),
-            'bleu1':        round(b1, 4),
-            'bleu2':        round(b2, 4),
-            'rouge_l':      round(rl_score, 4),
-            **{f'pred_{d}': round(pred_dict[d], 4) for d in DISEASES},
+            'n_gradcam_markers': sum(1 for f in findings[:5] if f.get('loc_source') == 'gradcam'),
+            'scored':       scored,
+            'report_error': report_error,
+            'bleu1':        b1,
+            'bleu2':        b2,
+            'rouge_l':      rl_score,
+            **{f'pred_{d}': pred_dict[d] for d in DISEASES},
             **{f'gt_{d}':   gt_dict[d] for d in DISEASES},
+            'markers':      json.dumps([{k: f.get(k) for k in ('name', 'x', 'y', 'radius', 'loc_source')}
+                                        for f in findings[:5]]),
+            'ai_report':    ai_text,
+            'reference_report': real_text,
         })
 
     n_eval = len(all_preds)
     print(f"\n  Successfully processed: {n_eval} images")
-
     if n_eval == 0:
         print("ERROR: No images were processed successfully.")
         return
@@ -715,95 +747,70 @@ def main():
     # ── Calculate metrics ────────────────────────────────────────────────────
     print("\n[4/6] Calculating metrics...")
     metrics_df = calculate_metrics(all_preds, all_labels)
-
-    # Print to console
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  RESULTS SUMMARY")
-    print("="*60)
-    display_cols = ['Disease', 'AUC', 'Sensitivity', 'Specificity',
-                    'Accuracy', 'N_positive']
-    print(metrics_df[display_cols].to_string(index=False))
-
+    print("=" * 60)
+    print(metrics_df[['Disease', 'AUC', 'Sensitivity', 'Specificity', 'Precision',
+                      'Accuracy', 'N_positive']].to_string(index=False))
     mean_auc = metrics_df[metrics_df['Disease'] != 'MEAN']['AUC'].mean()
 
     bleu1_mean = np.mean([s['bleu1'] for s in bleu_scores]) if bleu_scores else 0
     bleu2_mean = np.mean([s['bleu2'] for s in bleu_scores]) if bleu_scores else 0
     rouge_mean = np.mean(rouge_scores) if rouge_scores else 0
-
     if bleu_scores:
-        print(f"\n  Report Similarity vs Real Radiologist Text:")
+        print(f"\n  Report similarity vs real radiologist text (n={len(bleu_scores)} scored reports):")
         print(f"    BLEU-1:  {bleu1_mean:.4f}")
         print(f"    BLEU-2:  {bleu2_mean:.4f}")
         print(f"    ROUGE-L: {rouge_mean:.4f}")
+        print(f"    Report errors: {n_report_errors}; images without reference text: {n_no_reference}")
 
-    # ── Save CSV results ─────────────────────────────────────────────────────
+    # ── Save results ─────────────────────────────────────────────────────────
     print("\n[5/6] Saving results...")
-
-    # Per-image results
-    results_csv = os.path.join(OUTPUT_DIR, f'per_image_results_{ts}.csv')
-    pd.DataFrame(results_rows).to_csv(results_csv, index=False)
-    print(f"  Saved: per_image_results_{ts}.csv")
-
-    # Metrics table
-    metrics_csv = os.path.join(OUTPUT_DIR, f'metrics_table_{ts}.csv')
-    metrics_df.to_csv(metrics_csv, index=False)
-    print(f"  Saved: metrics_table_{ts}.csv")
+    pd.DataFrame(results_rows).to_csv(os.path.join(out_dir, f'per_image_results_{ts}.csv'), index=False)
+    metrics_df.to_csv(os.path.join(out_dir, f'metrics_table_{ts}.csv'), index=False)
+    try:
+        import torchxrayvision as xrv
+        xrv_version = getattr(xrv, '__version__', 'unknown')
+    except Exception:
+        xrv_version = 'unknown'
+    with open(os.path.join(out_dir, f'run_config_{ts}.json'), 'w') as f:
+        json.dump({
+            'timestamp': ts, 'location_mode': args.location, 'use_gradcam': use_gradcam,
+            'location_in_prompt': include_location, 'seed': args.seed,
+            'sampling': 'simple random sample of frontal images (pandas.DataFrame.sample)',
+            'max_images': args.max_images, 'frontal_images_on_disk': n_frontal_on_disk,
+            'images_processed': n_eval, 'threshold': THRESHOLD,
+            'model_weights': 'densenet121-res224-all', 'model_output_order': list(model.pathologies),
+            'torchxrayvision_version': xrv_version,
+            'llm': MODEL_NAME if RUN_REPORT_EVAL else None, 'llm_temperature': LLM_TEMPERATURE,
+            'reports_scored': len(bleu_scores), 'report_errors': n_report_errors,
+            'images_without_reference': n_no_reference,
+            'mean_auc': float(mean_auc), 'bleu1': float(bleu1_mean), 'bleu2': float(bleu2_mean),
+            'rouge_l': float(rouge_mean),
+        }, f, indent=2)
+    print(f"  Saved to: {out_dir}")
 
     # ── Generate plots ───────────────────────────────────────────────────────
     print("\n[6/6] Generating graphs...")
-
-    # Only use non-MEAN rows for plots
     plot_df = metrics_df[metrics_df['Disease'] != 'MEAN'].copy()
-
-    plot_roc_curves(all_preds, all_labels,
-        os.path.join(OUTPUT_DIR, f'roc_curves_{ts}.png'))
-    print("  Saved: roc_curves.png")
-
-    plot_auc_bar(plot_df,
-        os.path.join(OUTPUT_DIR, f'auc_per_disease_{ts}.png'))
-    print("  Saved: auc_per_disease.png")
-
-    plot_sensitivity_specificity(plot_df,
-        os.path.join(OUTPUT_DIR, f'sensitivity_specificity_{ts}.png'))
-    print("  Saved: sensitivity_specificity.png")
-
-    plot_disease_prevalence(all_labels,
-        os.path.join(OUTPUT_DIR, f'disease_prevalence_{ts}.png'))
-    print("  Saved: disease_prevalence.png")
-
-    plot_confusion_summary(plot_df,
-        os.path.join(OUTPUT_DIR, f'confusion_matrices_{ts}.png'))
-    print("  Saved: confusion_matrices.png")
-
-    plot_prediction_distributions(all_preds, all_labels,
-        os.path.join(OUTPUT_DIR, f'prediction_distributions_{ts}.png'))
-    print("  Saved: prediction_distributions.png")
-
+    plot_roc_curves(all_preds, all_labels, os.path.join(out_dir, f'roc_curves_{ts}.png'))
+    plot_auc_bar(plot_df, os.path.join(out_dir, f'auc_per_disease_{ts}.png'))
+    plot_sensitivity_specificity(plot_df, os.path.join(out_dir, f'sensitivity_specificity_{ts}.png'))
+    plot_disease_prevalence(all_labels, os.path.join(out_dir, f'disease_prevalence_{ts}.png'))
+    plot_confusion_summary(plot_df, os.path.join(out_dir, f'confusion_matrices_{ts}.png'))
+    plot_prediction_distributions(all_preds, all_labels, os.path.join(out_dir, f'prediction_distributions_{ts}.png'))
     if bleu_scores:
-        plot_report_metrics(bleu_scores, rouge_scores,
-            os.path.join(OUTPUT_DIR, f'report_similarity_{ts}.png'))
-        print("  Saved: report_similarity.png")
+        plot_report_metrics(bleu_scores, rouge_scores, os.path.join(out_dir, f'report_similarity_{ts}.png'))
+    plot_summary_dashboard(plot_df, n_eval, mean_auc, bleu1_mean, bleu2_mean, rouge_mean,
+                           os.path.join(out_dir, f'summary_dashboard_{ts}.png'))
 
-    plot_summary_dashboard(
-        plot_df, n_eval, mean_auc,
-        bleu1_mean, bleu2_mean, rouge_mean,
-        os.path.join(OUTPUT_DIR, f'summary_dashboard_{ts}.png'))
-    print("  Saved: summary_dashboard.png")
-
-    # ── Final summary ────────────────────────────────────────────────────────
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  EVALUATION COMPLETE")
-    print("="*60)
+    print("=" * 60)
     print(f"  Images evaluated : {n_eval}")
     print(f"  Mean AUC         : {mean_auc:.4f}")
-    print(f"  Output folder    : {OUTPUT_DIR}")
-    print(f"\n  Files saved:")
-    for f in sorted(os.listdir(OUTPUT_DIR)):
-        if ts in f:
-            size = os.path.getsize(os.path.join(OUTPUT_DIR, f))
-            print(f"    {f}  ({size//1024} KB)")
-    print("\n  Use these real results in your paper! They are 100% measured.")
-    print("="*60)
+    print(f"  Output folder    : {out_dir}")
+    print("=" * 60)
 
 
 if __name__ == '__main__':
